@@ -21,6 +21,20 @@ class CameraManager(
     private var cameraProvider: ProcessCameraProvider? = null
     private var camera: Camera? = null
     private var cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
+    private val previewUseCase by lazy {
+        Preview.Builder().build().apply {
+            setSurfaceProvider(previewView?.surfaceProvider)
+        }
+    }
+    private val analysisUseCase by lazy {
+        ImageAnalysis.Builder().build().apply {
+            setAnalyzer(
+                Executors.newSingleThreadExecutor()
+            ) { imageProxy ->
+                processImageProxy.invoke(imageProxy)
+            }
+        }
+    }
 
     init {
         activity?.lifecycle?.addObserver(this)
@@ -39,17 +53,6 @@ class CameraManager(
         val cameraProviderFuture = ProcessCameraProvider.getInstance(activity!!)
         cameraProviderFuture.addListener({
             cameraProvider = cameraProviderFuture.get()
-
-            val previewUseCase = Preview.Builder().build()
-            previewUseCase.setSurfaceProvider(previewView?.surfaceProvider)
-
-            val analysisUseCase = ImageAnalysis.Builder().build()
-            analysisUseCase.setAnalyzer(
-                Executors.newSingleThreadExecutor()
-            ) { imageProxy ->
-                processImageProxy.invoke(imageProxy)
-            }
-
             try {
                 camera = cameraProvider?.bindToLifecycle(
                     activity!!, cameraSelector, previewUseCase, analysisUseCase
