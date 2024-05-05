@@ -67,7 +67,6 @@ open class QrScannerView(context: Context, attrs: AttributeSet) : SurfaceView(co
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         fullViewRect.set(0f, 0f, measuredWidth.toFloat(), measuredHeight.toFloat())
-//        canvas.drawRect(fullViewRect, blackPaint)
 
         cameraRect.set(
             mLeft + cameraPadding,

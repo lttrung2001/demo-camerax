@@ -2,9 +2,7 @@ package com.trunglt.democamerax
 
 import android.Manifest
 import android.content.pm.PackageManager
-import android.graphics.Point
 import android.graphics.Rect
-import android.graphics.RectF
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
@@ -13,8 +11,6 @@ import androidx.camera.core.CameraSelector
 import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageProxy
 import androidx.core.app.ActivityCompat
-import androidx.core.graphics.toRect
-import com.google.gson.Gson
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
@@ -33,22 +29,26 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private val cameraManager by lazy {
         CameraManager(this, binding.previewView) {
-            processImageProxy(it)
+            val currentTime = System.currentTimeMillis()
+            if (currentTime - lastDetectedTime > 1000) {
+                lastDetectedTime = currentTime
+                processImageProxy(it)
+            } else {
+                it.close()
+            }
         }
     }
     private val barcodeScanner by lazy {
-        val options = BarcodeScannerOptions.Builder()
-            .setBarcodeFormats(
-                Barcode.FORMAT_QR_CODE,
-                Barcode.FORMAT_AZTEC
-            )
-            .build()
+        val options = BarcodeScannerOptions.Builder().setBarcodeFormats(
+            Barcode.FORMAT_QR_CODE, Barcode.FORMAT_AZTEC
+        ).build()
         BarcodeScanning.getClient(options)
     }
     private val realTimeOpts =
         FaceDetectorOptions.Builder().setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_FAST)
             .setContourMode(FaceDetectorOptions.CONTOUR_MODE_NONE).build()
     private val faceDetector = FaceDetection.getClient(realTimeOpts)
+    private var lastDetectedTime = System.currentTimeMillis()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -90,100 +90,49 @@ class MainActivity : AppCompatActivity() {
 
     private fun processImageProxy(imageProxy: ImageProxy) {
         imageProxy.image?.let { image ->
-            val inputImage =
-                InputImage.fromMediaImage(
-                    image,
-                    imageProxy.imageInfo.rotationDegrees
-                )
-            barcodeScanner.process(inputImage)
-                .addOnSuccessListener { barcodeList ->
-                    val barcode = barcodeList.getOrNull(0)
-                    println("CORNERS: ${Gson().toJson(barcode?.cornerPoints)}")
-                    Log.wtf("TRUNGLE", Gson().toJson(barcode))
-                    // `rawValue` is the decoded value of the barcode
-                    barcode?.rawValue?.let { value ->
-                        if (isInScanArea(barcode.boundingBox)) {
-                            Toast.makeText(this, value, Toast.LENGTH_LONG).show()
-                        }
+            val inputImage = InputImage.fromMediaImage(
+                image, imageProxy.imageInfo.rotationDegrees
+            )
+            barcodeScanner.process(inputImage).addOnSuccessListener { barcodeList ->
+                if (barcodeList.isNullOrEmpty()) {
+                    binding.transparentView.setCorners(binding.transparentView.getDefaultBoxCorners())
+                    return@addOnSuccessListener
+                }
+                val barcode = barcodeList.getOrNull(0)
+                // `rawValue` is the decoded value of the barcode
+                barcode?.rawValue?.let { value ->
+                    if (isInScanArea(barcode.boundingBox)) {
+                        Toast.makeText(this, value, Toast.LENGTH_LONG).show()
                     }
-                    binding.transparentView.setFaceRectList(
-                        barcodeList.map {
-                            val boundingBoxT = it.boundingBox!!
-                            val sx = binding.transparentView.width.toFloat() / inputImage.height
-                            val sy = binding.transparentView.height.toFloat() / inputImage.width
-                            val scale = sx.coerceAtLeast(sy)
-                            val offsetX =
-                                (binding.transparentView.width.toFloat() - ceil(image.cropRect.height() * scale)) / 2.0f
-                            val offsetY =
-                                (binding.transparentView.height.toFloat() - ceil(image.cropRect.width() * scale)) / 2.0f
-                            val dstRectF = RectF().apply {
-                                left = boundingBoxT.right * scale + offsetX
-                                top = boundingBoxT.top * scale + offsetY
-                                right = boundingBoxT.left * scale + offsetX
-                                bottom = boundingBoxT.bottom * scale + offsetY
-                                if (cameraManager.isFrontCameraInUse()) { // Front camera
-                                    val centerX = binding.transparentView.width.toFloat() / 2
-                                    left = centerX + (centerX - left)
-                                    right = centerX - (right - centerX)
-                                }
-                            }.toRect()
-                            barcode?.cornerPoints?.toList()
-                                ?.let { crns ->
-                                    binding.transparentView.setCorners(crns.map {
-                                        Point(
-                                            (it.x * scale + offsetX).toInt(),
-                                            (it.y * scale + offsetY).toInt()
-                                        )
-                                    })
-                                }
-                            dstRectF
-                        }
-                    )
                 }
-                .addOnFailureListener {
-                    // This failure will happen if the barcode scanning model
-                    // fails to download from Google Play Services
-                    Log.wtf("TRUNGLE", it.message.orEmpty())
-                }.addOnCompleteListener {
-                    // When the image is from CameraX analysis use case, must
-                    // call image.close() on received images when finished
-                    // using them. Otherwise, new images may not be received
-                    // or the camera may stall.
+                val sx = binding.transparentView.width.toFloat() / inputImage.height
+                val sy = binding.transparentView.height.toFloat() / inputImage.width
+                val scale = sx.coerceAtLeast(sy)
+                val offsetX =
+                    (binding.transparentView.width.toFloat() - ceil(image.cropRect.height() * scale)) / 2.0f
+                val offsetY =
+                    (binding.transparentView.height.toFloat() - ceil(image.cropRect.width() * scale)) / 2.0f
+                barcode?.cornerPoints?.toList()?.let { crns ->
+                    binding.transparentView.setCorners(crns.map {
+                        DrawingView.AnimatablePoint(
+                            (it.x * scale + offsetX).toInt(),
+                            (it.y * scale + offsetY).toInt()
+                        )
+                    })
+                }
+            }.addOnFailureListener {
+                // This failure will happen if the barcode scanning model
+                // fails to download from Google Play Services
+                Log.wtf("TRUNGLE", it.message.orEmpty())
+            }.addOnCompleteListener {
+                // When the image is from CameraX analysis use case, must
+                // call image.close() on received images when finished
+                // using them. Otherwise, new images may not be received
+                // or the camera may stall.
 
-                    imageProxy.image?.close()
-                    imageProxy.close()
-                }
-//            val inputImage = InputImage.fromMediaImage(
-//                image, imageProxy.imageInfo.rotationDegrees
-//            )
-//            faceDetector.process(inputImage).addOnSuccessListener { faces ->
-//                binding.transparentView.setFaceRectList(faces.map { face ->
-//                    val boundingBoxT = face.boundingBox
-//                    val sx = binding.transparentView.width.toFloat() / inputImage.height
-//                    val sy = binding.transparentView.height.toFloat() / inputImage.width
-//                    val scale = sx.coerceAtLeast(sy)
-//                    val offsetX =
-//                        (binding.transparentView.width.toFloat() - ceil(image.cropRect.height() * scale)) / 2.0f
-//                    val offsetY =
-//                        (binding.transparentView.height.toFloat() - ceil(image.cropRect.width() * scale)) / 2.0f
-//                    RectF().apply {
-//                        left = boundingBoxT.right * scale + offsetX
-//                        top = boundingBoxT.top * scale + offsetY
-//                        right = boundingBoxT.left * scale + offsetX
-//                        bottom = boundingBoxT.bottom * scale + offsetY
-//                        if (cameraManager.isFrontCameraInUse()) { // Front camera
-//                            val centerX = binding.transparentView.width.toFloat() / 2
-//                            left = centerX + (centerX - left)
-//                            right = centerX - (right - centerX)
-//                        }
-//                    }.toRect()
-//                })
-//            }.addOnFailureListener {
-//
-//            }.addOnCompleteListener {
-//                imageProxy.image?.close()
-//                imageProxy.close()
-//            }
+                imageProxy.image?.close()
+                imageProxy.close()
+            }
         }
     }
 
