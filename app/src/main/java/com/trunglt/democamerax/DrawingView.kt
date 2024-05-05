@@ -1,18 +1,12 @@
 package com.trunglt.democamerax
 
 import android.content.Context
-import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.Paint
-import android.graphics.Point
-import android.graphics.Rect
+import android.graphics.*
 import android.util.AttributeSet
-import android.view.SurfaceView
 import androidx.core.content.ContextCompat
 
 
 class DrawingView(context: Context, attrs: AttributeSet) : QrScannerView(context, attrs) {
-    var degrees: Float = 0F
     private val corners = mutableListOf<Point>()
     private val faceRectList = mutableListOf<Rect>()
     private val rectBorderPaint by lazy {
@@ -49,24 +43,31 @@ class DrawingView(context: Context, attrs: AttributeSet) : QrScannerView(context
         try {
 //            faceRectList.forEach {
 //                canvas.save()
-//                canvas.rotate(degrees)
 //                canvas.skew(0.15f, 0.0f)
 //                canvas.drawLine(it.left.toFloat(), it.top.div(1.15).toFloat(), it.right.toFloat(), it.top.toFloat(), rectBorderPaint)
 //                canvas.drawRect(it, rectBorderPaint)
 //                canvas.restore()
 //            }
-            canvas.drawLine(corners[0].x.toFloat(),
+            canvas.drawLine(
+                corners[0].x.toFloat(),
                 corners[0].y.toFloat(), corners[1].x.toFloat(),
-                corners[1].y.toFloat(), rectBorderPaint)
-            canvas.drawLine(corners[1].x.toFloat(),
+                corners[1].y.toFloat(), rectBorderPaint
+            )
+            canvas.drawLine(
+                corners[1].x.toFloat(),
                 corners[1].y.toFloat(), corners[2].x.toFloat(),
-                corners[2].y.toFloat(), rectBorderPaint)
-            canvas.drawLine(corners[2].x.toFloat(),
+                corners[2].y.toFloat(), rectBorderPaint
+            )
+            canvas.drawLine(
+                corners[2].x.toFloat(),
                 corners[2].y.toFloat(), corners[3].x.toFloat(),
-                corners[3].y.toFloat(), rectBorderPaint)
-            canvas.drawLine(corners[3].x.toFloat(),
+                corners[3].y.toFloat(), rectBorderPaint
+            )
+            canvas.drawLine(
+                corners[3].x.toFloat(),
                 corners[3].y.toFloat(), corners[0].x.toFloat(),
-                corners[0].y.toFloat(), rectBorderPaint)
+                corners[0].y.toFloat(), rectBorderPaint
+            )
         } catch (e: Exception) {
 
         }
