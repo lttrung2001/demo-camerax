@@ -1,9 +1,15 @@
 package com.trunglt.democamerax
 
 import android.Manifest
+import android.content.Context
 import android.content.pm.PackageManager
+import android.graphics.Point
 import android.graphics.Rect
 import android.graphics.RectF
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
@@ -59,6 +65,29 @@ class MainActivity : AppCompatActivity() {
 
         if (hasCameraPermission()) cameraManager.startCamera(CameraSelector.DEFAULT_FRONT_CAMERA)
         else requestPermission()
+        val sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
+        val accelerometerSensor: Sensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+        val accelerometerListener: SensorEventListener = object : SensorEventListener {
+            override fun onSensorChanged(event: SensorEvent) {
+                // Xử lý thông số gia tốc
+                val yAcceleration = event.values[0]
+                val angle =
+                    Math.atan2(yAcceleration.toDouble(), SensorManager.GRAVITY_EARTH.toDouble())
+                        .toFloat()
+                // Cập nhật góc nghiêng
+                binding.transparentView.degrees = angle * (180 / Math.PI.toFloat())
+//                updatePhoneTiltAngle(angle)
+            }
+
+            override fun onAccuracyChanged(sensor: Sensor, accuracy: Int) {
+                // Xử lý thay đổi độ chính xác của cảm biến
+            }
+        }
+        sensorManager.registerListener(
+            accelerometerListener,
+            accelerometerSensor,
+            SensorManager.SENSOR_DELAY_NORMAL
+        );
     }
 
     // checking to see whether user has already granted permission
@@ -97,6 +126,7 @@ class MainActivity : AppCompatActivity() {
             barcodeScanner.process(inputImage)
                 .addOnSuccessListener { barcodeList ->
                     val barcode = barcodeList.getOrNull(0)
+                    println("CORNERS: ${Gson().toJson(barcode?.cornerPoints)}")
                     Log.wtf("TRUNGLE", Gson().toJson(barcode))
                     // `rawValue` is the decoded value of the barcode
                     barcode?.rawValue?.let { value ->
@@ -114,7 +144,7 @@ class MainActivity : AppCompatActivity() {
                                 (binding.transparentView.width.toFloat() - ceil(image.cropRect.height() * scale)) / 2.0f
                             val offsetY =
                                 (binding.transparentView.height.toFloat() - ceil(image.cropRect.width() * scale)) / 2.0f
-                            RectF().apply {
+                            val dstRectF = RectF().apply {
                                 left = boundingBoxT.right * scale + offsetX
                                 top = boundingBoxT.top * scale + offsetY
                                 right = boundingBoxT.left * scale + offsetX
@@ -125,6 +155,14 @@ class MainActivity : AppCompatActivity() {
                                     right = centerX - (right - centerX)
                                 }
                             }.toRect()
+                            barcode?.cornerPoints?.toList()
+                                ?.let { crns -> binding.transparentView.setCorners(crns.map {
+                                    Point(
+                                        (it.x * scale + offsetX).toInt(),
+                                        (it.y * scale + offsetY).toInt()
+                                    )
+                                }) }
+                            dstRectF
                         }
                     )
                 }
