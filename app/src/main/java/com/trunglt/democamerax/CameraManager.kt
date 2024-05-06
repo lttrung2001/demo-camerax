@@ -65,6 +65,10 @@ class CameraManager(
         }, ContextCompat.getMainExecutor(activity!!))
     }
 
+    fun stopCamera() {
+        cameraProvider?.unbindAll()
+    }
+
     fun swap() {
         camera = null
         cameraProvider?.unbindAll()

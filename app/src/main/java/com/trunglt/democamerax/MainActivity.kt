@@ -2,6 +2,7 @@ package com.trunglt.democamerax
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
 import android.graphics.Rect
 import android.os.Bundle
 import android.util.Log
@@ -15,7 +16,6 @@ import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
-import com.google.mlkit.vision.face.FaceDetection
 import com.google.mlkit.vision.face.FaceDetectorOptions
 import com.trunglt.democamerax.databinding.ActivityMainBinding
 import kotlin.math.ceil
@@ -47,7 +47,6 @@ class MainActivity : AppCompatActivity() {
     private val realTimeOpts =
         FaceDetectorOptions.Builder().setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_FAST)
             .setContourMode(FaceDetectorOptions.CONTOUR_MODE_NONE).build()
-    private val faceDetector = FaceDetection.getClient(realTimeOpts)
     private var lastDetectedTime = System.currentTimeMillis()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -58,8 +57,20 @@ class MainActivity : AppCompatActivity() {
             cameraManager.swap()
         }
 
-        if (hasCameraPermission()) cameraManager.startCamera(CameraSelector.DEFAULT_FRONT_CAMERA)
+        if (hasCameraPermission()) cameraManager.startCamera(CameraSelector.DEFAULT_BACK_CAMERA)
         else requestPermission()
+        binding.transparentView.onAnimationFocusDone = {
+            binding.previewView.bitmap?.let { srcBitmap ->
+                val dstBitmap = Bitmap.createBitmap(
+                    srcBitmap,
+                    it.left.toInt(),
+                    it.top.toInt(),
+                    it.width().toInt(),
+                    it.height().toInt()
+                )
+                binding.transparentView.startZoomAnimation(dstBitmap)
+            }
+        }
     }
 
     // checking to see whether user has already granted permission
@@ -95,30 +106,29 @@ class MainActivity : AppCompatActivity() {
             )
             barcodeScanner.process(inputImage).addOnSuccessListener { barcodeList ->
                 if (barcodeList.isNullOrEmpty()) {
-                    binding.transparentView.setCorners(binding.transparentView.getDefaultBoxCorners())
+//                    binding.transparentView.setCorners(binding.transparentView.getDefaultBoxCorners())
                     return@addOnSuccessListener
                 }
-                val barcode = barcodeList.getOrNull(0)
-                // `rawValue` is the decoded value of the barcode
-                barcode?.rawValue?.let { value ->
-                    if (isInScanArea(barcode.boundingBox)) {
-                        Toast.makeText(this, value, Toast.LENGTH_LONG).show()
+                barcodeList[0]?.let {
+                    cameraManager.stopCamera()
+                    if (isInScanArea(it.boundingBox)) {
+                        Toast.makeText(this, it.rawValue, Toast.LENGTH_LONG).show()
                     }
-                }
-                val sx = binding.transparentView.width.toFloat() / inputImage.height
-                val sy = binding.transparentView.height.toFloat() / inputImage.width
-                val scale = sx.coerceAtLeast(sy)
-                val offsetX =
-                    (binding.transparentView.width.toFloat() - ceil(image.cropRect.height() * scale)) / 2.0f
-                val offsetY =
-                    (binding.transparentView.height.toFloat() - ceil(image.cropRect.width() * scale)) / 2.0f
-                barcode?.cornerPoints?.toList()?.let { crns ->
-                    binding.transparentView.setCorners(crns.map {
-                        DrawingView.AnimatablePoint(
-                            (it.x * scale + offsetX).toInt(),
-                            (it.y * scale + offsetY).toInt()
-                        )
-                    })
+                    val sx = binding.transparentView.width.toFloat() / inputImage.height
+                    val sy = binding.transparentView.height.toFloat() / inputImage.width
+                    val scale = sx.coerceAtLeast(sy)
+                    val offsetX =
+                        (binding.transparentView.width.toFloat() - ceil(image.cropRect.height() * scale)) / 2.0f
+                    val offsetY =
+                        (binding.transparentView.height.toFloat() - ceil(image.cropRect.width() * scale)) / 2.0f
+                    it.cornerPoints?.toList()?.let { crns ->
+                        binding.transparentView.setCorners(crns.map { p ->
+                            DrawingView.AnimatablePoint(
+                                (p.x * scale + offsetX).toInt(),
+                                (p.y * scale + offsetY).toInt()
+                            )
+                        })
+                    }
                 }
             }.addOnFailureListener {
                 // This failure will happen if the barcode scanning model
