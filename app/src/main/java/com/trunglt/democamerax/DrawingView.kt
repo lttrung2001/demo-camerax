@@ -1,170 +1,244 @@
 package com.trunglt.democamerax
 
+import android.animation.Animator
 import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
+import android.animation.ValueAnimator
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
-import android.graphics.Point
+import android.graphics.Rect
 import android.util.AttributeSet
-import androidx.core.animation.doOnEnd
-import androidx.core.animation.doOnStart
-import androidx.core.content.ContextCompat
+import android.view.View
+import androidx.core.graphics.toRect
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.qrcode.QRCodeWriter
 
 
-class DrawingView(context: Context, attrs: AttributeSet) : QrScannerView(context, attrs) {
-    private var isAnimationRunning = false
-    private val mCorners = mutableListOf(
-        AnimatablePoint(),
-        AnimatablePoint(),
-        AnimatablePoint(),
-        AnimatablePoint()
-    )
-    private val rectBorderPaint by lazy {
+class DrawingView(context: Context, attrs: AttributeSet) : View(context, attrs) {
+    companion object {
+        private const val DEFAULT_QR_SIZE = 800
+        private const val DEFAULT_QR_BORDER_WIDTH = 20
+        private const val DEFAULT_QR_BORDER_RADIUS = 40
+        private const val DEFAULT_QR_IMAGE_PADDING = 160
+    }
+
+    var qrCodeContent: String = ""
+    var srcDegree = 0
+    private var degree = 0
+    private var isZoomOut = false
+    private var isAnimating = false
+    private var qrSize: Int = DEFAULT_QR_SIZE
+    private var qrBorderWidth: Int = DEFAULT_QR_BORDER_WIDTH
+    private var qrBorderRadius: Int = DEFAULT_QR_BORDER_RADIUS
+    private var qrImagePadding: Int = DEFAULT_QR_IMAGE_PADDING
+    private var qrBorderColor: Int = Color.WHITE
+    private val qrBitmap by lazy {
+        val writer = QRCodeWriter()
+        val bitMatrix = writer.encode(
+            qrCodeContent,
+            BarcodeFormat.QR_CODE,
+            qrSize,
+            qrSize
+        )
+
+        val w = bitMatrix.width
+        val h = bitMatrix.height
+        val pixels = IntArray(w * h)
+        for (y in 0 until h) {
+            for (x in 0 until w) {
+                pixels[y * w + x] = if (bitMatrix[x, y]) Color.BLACK else Color.WHITE
+            }
+        }
+
+        val bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        bitmap.setPixels(pixels, 0, w, 0, 0, w, h)
+        bitmap
+    }
+    private val srcRect by lazy {
+        AnimatableRectF(
+            cx - qrSize / 2,
+            cy - qrSize / 2,
+            cx + qrSize / 2,
+            cy + qrSize / 2
+        )
+    }
+    private val qrRect by lazy {
+        AnimatableRectF(
+            cx - qrSize / 2,
+            cy - qrSize / 2,
+            cx + qrSize / 2,
+            cy + qrSize / 2
+        )
+    }
+    private val qrImageRect by lazy {
+        qrRect.toRect()
+    }
+    private val cx
+        get() = measuredWidth / 2f
+    private val cy
+        get() = measuredHeight / 3f
+    private val qrBorderPaint by lazy {
         Paint().apply {
             flags = Paint.ANTI_ALIAS_FLAG
             style = Paint.Style.STROKE
-            color = ContextCompat.getColor(context, R.color.white)
-            strokeWidth = 4f
         }
+    }
+    private val qrImagePaint by lazy {
+        Paint().apply {
+            flags = Paint.ANTI_ALIAS_FLAG
+            style = Paint.Style.FILL
+            color = Color.WHITE
+        }
+    }
+
+    private val zoomOut = {
+        isZoomOut = true
+        startZoomAnimation(srcRect.toRect())
     }
 
     init {
         setBackgroundColor(Color.TRANSPARENT)
+        val typedArray = context.obtainStyledAttributes(attrs, R.styleable.DrawingView)
+        qrSize =
+            typedArray.getDimensionPixelOffset(R.styleable.DrawingView_qr_size, DEFAULT_QR_SIZE)
+        qrBorderWidth = typedArray.getDimensionPixelOffset(
+            R.styleable.DrawingView_qr_border_width,
+            DEFAULT_QR_BORDER_WIDTH
+        )
+        qrBorderRadius = typedArray.getDimensionPixelOffset(
+            R.styleable.DrawingView_qr_border_radius,
+            DEFAULT_QR_BORDER_RADIUS
+        )
+        qrImagePadding = typedArray.getDimensionPixelOffset(
+            R.styleable.DrawingView_qr_image_padding,
+            DEFAULT_QR_IMAGE_PADDING
+        )
+        qrBorderColor = typedArray.getColor(R.styleable.DrawingView_qr_border_color, Color.WHITE)
+        typedArray.recycle()
     }
 
     override fun onDraw(canvas: Canvas) {
-        drawBoundingBox(canvas)
+        super.onDraw(canvas)
+        drawQrRect(canvas)
     }
 
-    fun setCorners(corners: List<AnimatablePoint>) {
-        if (isAnimationRunning) {
-            return
+    fun animateToDetectedRectF(rect: Rect) {
+        if (isAnimating) return
+        startZoomAnimation(rect) {
+            zoomOut.invoke()
         }
-        val animateLeft: ObjectAnimator = ObjectAnimator.ofFloat(
-            mCorners[0],
-            "x",
-            mCorners[0].x.toFloat(),
-            corners[0].x.toFloat()
-        )
-        val animateLeft2: ObjectAnimator = ObjectAnimator.ofFloat(
-            mCorners[0],
-            "y",
-            mCorners[0].y.toFloat(),
-            corners[0].y.toFloat()
-        )
-        val animateRight: ObjectAnimator = ObjectAnimator.ofFloat(
-            mCorners[1],
-            "x",
-            mCorners[1].x.toFloat(),
-            corners[1].x.toFloat()
-        )
-        val animateRight2: ObjectAnimator = ObjectAnimator.ofFloat(
-            mCorners[1],
-            "y",
-            mCorners[1].y.toFloat(),
-            corners[1].y.toFloat()
-        )
-        val animateTop: ObjectAnimator = ObjectAnimator.ofFloat(
-            mCorners[2],
-            "x",
-            mCorners[2].x.toFloat(),
-            corners[2].x.toFloat()
-        )
-        val animateTop2: ObjectAnimator = ObjectAnimator.ofFloat(
-            mCorners[2],
-            "y",
-            mCorners[2].y.toFloat(),
-            corners[2].y.toFloat()
-        )
-        val animateBottom: ObjectAnimator = ObjectAnimator.ofFloat(
-            mCorners[3],
-            "x",
-            mCorners[3].x.toFloat(),
-            corners[3].x.toFloat()
-        )
-        val animateBottom2: ObjectAnimator = ObjectAnimator.ofFloat(
-            mCorners[3],
-            "y",
-            mCorners[3].y.toFloat(),
-            corners[3].y.toFloat()
-        )
-        animateBottom.addUpdateListener { postInvalidate() }
-        animateBottom.doOnStart {
-            isAnimationRunning = true
-        }
-        animateBottom.doOnEnd {
-            isAnimationRunning = false
-            mCorners.clear()
-            mCorners.addAll(corners)
-        }
+    }
+
+    private fun startZoomAnimation(
+        rect: Rect,
+        onComplete: (() -> Unit)? = null
+    ) {
         val rectAnimation = AnimatorSet()
+        val animateLeft: ObjectAnimator = ObjectAnimator.ofFloat(
+            qrRect,
+            "left",
+            qrRect.left,
+            rect.left.toFloat()
+        ).apply {
+            addUpdateListener {
+                qrRect.left = it.animatedValue as Float
+            }
+        }
+        val animateRight: ObjectAnimator = ObjectAnimator.ofFloat(
+            qrRect,
+            "right",
+            qrRect.right,
+            rect.right.toFloat()
+        ).apply {
+            addUpdateListener {
+                qrRect.right = it.animatedValue as Float
+            }
+        }
+        val animateTop: ObjectAnimator = ObjectAnimator.ofFloat(
+            qrRect,
+            "top",
+            qrRect.top,
+            rect.top.toFloat()
+        ).apply {
+            addUpdateListener {
+                qrRect.top = it.animatedValue as Float
+            }
+        }
+        val animateBottom: ObjectAnimator = ObjectAnimator.ofFloat(
+            qrRect,
+            "bottom",
+            qrRect.bottom,
+            rect.bottom.toFloat()
+        ).apply {
+            addUpdateListener {
+                qrRect.bottom = it.animatedValue as Float
+                postInvalidate()
+            }
+        }
+        rectAnimation.addListener(object : Animator.AnimatorListener {
+            override fun onAnimationStart(animation: Animator) {
+                isAnimating = true
+            }
+
+            override fun onAnimationEnd(animation: Animator) {
+                isAnimating = false
+                onComplete?.invoke()
+            }
+
+            override fun onAnimationCancel(animation: Animator) {
+                isAnimating = false
+            }
+
+            override fun onAnimationRepeat(animation: Animator) {
+
+            }
+        })
+        val degreeAnimation = if (isZoomOut) {
+            ValueAnimator.ofInt(srcDegree, 0)
+        } else {
+            ValueAnimator.ofInt(0, srcDegree)
+        }.apply {
+            addUpdateListener {
+                degree = it.animatedValue as Int
+            }
+        }
         rectAnimation.playTogether(
             animateLeft,
             animateRight,
             animateTop,
             animateBottom,
-            animateLeft2,
-            animateRight2,
-            animateTop2,
-            animateBottom2
+            degreeAnimation
         )
         rectAnimation.setDuration(250).start()
     }
 
-    fun getDefaultBoxCorners(): List<AnimatablePoint> {
-        return listOf(
-            AnimatablePoint(mLeft.toInt(), mTop.toInt()),
-            AnimatablePoint(mRight.toInt(), mTop.toInt()),
-            AnimatablePoint(mRight.toInt(), mBottom.toInt()),
-            AnimatablePoint(mLeft.toInt(), mBottom.toInt())
+    private fun drawQrRect(canvas: Canvas) {
+        canvas.save()
+        canvas.rotate(degree.toFloat(), qrRect.centerX(), qrRect.centerY())
+        canvas.drawRoundRect(
+            qrRect,
+            qrBorderRadius.toFloat(),
+            qrBorderRadius.toFloat(),
+            qrBorderPaint.apply {
+                color = qrBorderColor
+                strokeWidth = qrBorderWidth.toFloat()
+                if (isZoomOut) {
+                    style = Paint.Style.FILL_AND_STROKE
+                }
+            }
         )
-    }
-
-    private fun drawBoundingBox(canvas: Canvas) {
-        try {
-            canvas.drawLine(
-                mCorners[0].x.toFloat(),
-                mCorners[0].y.toFloat(), mCorners[1].x.toFloat(),
-                mCorners[1].y.toFloat(), rectBorderPaint
-            )
-            canvas.drawLine(
-                mCorners[1].x.toFloat(),
-                mCorners[1].y.toFloat(), mCorners[2].x.toFloat(),
-                mCorners[2].y.toFloat(), rectBorderPaint
-            )
-            canvas.drawLine(
-                mCorners[2].x.toFloat(),
-                mCorners[2].y.toFloat(), mCorners[3].x.toFloat(),
-                mCorners[3].y.toFloat(), rectBorderPaint
-            )
-            canvas.drawLine(
-                mCorners[3].x.toFloat(),
-                mCorners[3].y.toFloat(), mCorners[0].x.toFloat(),
-                mCorners[0].y.toFloat(), rectBorderPaint
-            )
-        } catch (e: Exception) {
-
-        }
-    }
-
-    class AnimatablePoint : Point {
-        constructor() : super() {}
-        constructor(x: Int, y: Int) : super() {
-            this.x = x
-            this.y = y
-        }
-
-        var x: Float
-            get() = super.x.toFloat()
-            set(value) {
-                this.x = value.toInt()
+        if (isZoomOut) {
+            qrImageRect.apply {
+                left = (qrRect.left + qrImagePadding).toInt()
+                top = (qrRect.top + qrImagePadding).toInt()
+                right = (qrRect.right - qrImagePadding).toInt()
+                bottom = (qrRect.bottom - qrImagePadding).toInt()
             }
-        var y: Float
-            get() = super.y.toFloat()
-            set(value) {
-                this.y = value.toInt()
-            }
+            canvas.drawBitmap(qrBitmap, null, qrImageRect, null)
+        }
+        canvas.restore()
     }
 }

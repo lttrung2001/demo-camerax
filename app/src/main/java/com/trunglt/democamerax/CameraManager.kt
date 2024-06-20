@@ -20,7 +20,7 @@ class CameraManager(
 ): DefaultLifecycleObserver {
     private var cameraProvider: ProcessCameraProvider? = null
     private var camera: Camera? = null
-    private var cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
+    private var cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
     private val previewUseCase by lazy {
         Preview.Builder().build().apply {
             setSurfaceProvider(previewView?.surfaceProvider)
@@ -70,6 +70,10 @@ class CameraManager(
         cameraProvider?.unbindAll()
         cameraSelector = getOppositeCamera()
         startCamera(cameraSelector)
+    }
+
+    fun stop() {
+        cameraProvider?.unbindAll()
     }
 
     fun isFrontCameraInUse() = cameraSelector == CameraSelector.DEFAULT_FRONT_CAMERA

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -18,14 +19,13 @@
             android:layout_height="match_parent" />
 
         <com.trunglt.democamerax.DrawingView
-            android:id="@+id/transparent_view"
+            android:id="@+id/drawing_view"
             android:layout_width="match_parent"
-            android:layout_height="match_parent" />
+            android:layout_height="match_parent"
+            app:qr_border_color="@color/white"
+            app:qr_border_radius="16dp"
+            app:qr_border_width="4dp"
+            app:qr_image_padding="16dp"
+            app:qr_size="200dp" />
     </FrameLayout>
-
-    <Button
-        android:id="@+id/btn_take_picture"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Swap camera" />
 </LinearLayout>
