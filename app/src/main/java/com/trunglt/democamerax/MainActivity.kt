@@ -92,13 +92,7 @@ class MainActivity : AppCompatActivity() {
                         it.top = (it.top * scale + offsetY).toInt()
                         it.right = (it.right * scale + offsetX).toInt()
                         it.bottom = (it.bottom * scale + offsetY).toInt()
-                        binding.drawingView.srcDegree = calculateAngle(
-                            barcode.cornerPoints!![0],
-                            barcode.cornerPoints!![1],
-                            barcode.cornerPoints!![2],
-                            barcode.cornerPoints!![3],
-                        )
-                        binding.drawingView.qrCodeContent = barcode.rawValue.orEmpty()
+                        binding.drawingView.barcode = barcode
                         binding.drawingView.animateToDetectedRectF(it)
                     }
                 }
@@ -125,14 +119,5 @@ class MainActivity : AppCompatActivity() {
         // Kiểm tra xem bounding box có nằm hoàn toàn bên trong preview view không
         // Nếu cả các cạnh của bounding box đều nằm trong preview view, chúng ta xem nó là nằm trong preview view
         return bboxLeft >= 0 && bboxTop >= 0 && bboxRight <= previewViewWidth && bboxBottom <= previewViewHeight
-    }
-
-    fun calculateAngle(topLeft: Point, topRight: Point, bottomRight: Point, bottomLeft: Point): Int {
-        val deltaX = (topRight.x - topLeft.x).toFloat()
-        val deltaY = (topRight.y - topLeft.y).toFloat()
-        val angle = atan2(deltaY, deltaX)
-        return Math.toDegrees(angle.toDouble()).toInt().also {
-            println(it)
-        }
     }
 }

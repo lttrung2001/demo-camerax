@@ -9,12 +9,15 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Point
 import android.graphics.Rect
 import android.util.AttributeSet
 import android.view.View
 import androidx.core.graphics.toRect
+import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
+import kotlin.math.atan2
 
 
 class DrawingView(context: Context, attrs: AttributeSet) : View(context, attrs) {
@@ -25,20 +28,34 @@ class DrawingView(context: Context, attrs: AttributeSet) : View(context, attrs) 
         private const val DEFAULT_QR_IMAGE_PADDING = 160
     }
 
-    var qrCodeContent: String = ""
-    var srcDegree = 0
+    var barcode: Barcode? = null
+        set(value) {
+            field = value
+            srcDegree = calculateAngle(
+                value?.cornerPoints!![0],
+                value.cornerPoints!![1],
+                value.cornerPoints!![2],
+                value.cornerPoints!![3],
+            )
+        }
+    private var srcDegree = 0
     private var degree = 0
     private var isZoomOut = false
     private var isAnimating = false
     private var qrSize: Int = DEFAULT_QR_SIZE
     private var qrBorderWidth: Int = DEFAULT_QR_BORDER_WIDTH
     private var qrBorderRadius: Int = DEFAULT_QR_BORDER_RADIUS
+        set(value) {
+            field = value
+            qrBorderRadiusAnimatedValue = value
+        }
+    private var qrBorderRadiusAnimatedValue = DEFAULT_QR_BORDER_RADIUS
     private var qrImagePadding: Int = DEFAULT_QR_IMAGE_PADDING
     private var qrBorderColor: Int = Color.WHITE
     private val qrBitmap by lazy {
         val writer = QRCodeWriter()
         val bitMatrix = writer.encode(
-            qrCodeContent,
+            barcode?.rawValue.orEmpty(),
             BarcodeFormat.QR_CODE,
             qrSize,
             qrSize
@@ -205,12 +222,22 @@ class DrawingView(context: Context, attrs: AttributeSet) : View(context, attrs) 
                 degree = it.animatedValue as Int
             }
         }
+        val qrBorderRadiusAnimation = if (isZoomOut) {
+            ValueAnimator.ofInt(0, qrBorderRadius)
+        } else {
+            ValueAnimator.ofInt(qrBorderRadius, 0)
+        }.apply {
+            addUpdateListener {
+                qrBorderRadiusAnimatedValue = it.animatedValue as Int
+            }
+        }
         rectAnimation.playTogether(
             animateLeft,
             animateRight,
             animateTop,
             animateBottom,
-            degreeAnimation
+            degreeAnimation,
+            qrBorderRadiusAnimation
         )
         rectAnimation.setDuration(250).start()
     }
@@ -220,8 +247,8 @@ class DrawingView(context: Context, attrs: AttributeSet) : View(context, attrs) 
         canvas.rotate(degree.toFloat(), qrRect.centerX(), qrRect.centerY())
         canvas.drawRoundRect(
             qrRect,
-            qrBorderRadius.toFloat(),
-            qrBorderRadius.toFloat(),
+            qrBorderRadiusAnimatedValue.toFloat(),
+            qrBorderRadiusAnimatedValue.toFloat(),
             qrBorderPaint.apply {
                 color = qrBorderColor
                 strokeWidth = qrBorderWidth.toFloat()
@@ -240,5 +267,14 @@ class DrawingView(context: Context, attrs: AttributeSet) : View(context, attrs) 
             canvas.drawBitmap(qrBitmap, null, qrImageRect, null)
         }
         canvas.restore()
+    }
+
+    private fun calculateAngle(topLeft: Point, topRight: Point, bottomRight: Point, bottomLeft: Point): Int {
+        val deltaX = (topRight.x - topLeft.x).toFloat()
+        val deltaY = (topRight.y - topLeft.y).toFloat()
+        val angle = atan2(deltaY, deltaX)
+        return Math.toDegrees(angle.toDouble()).toInt().also {
+            println(it)
+        }
     }
 }
