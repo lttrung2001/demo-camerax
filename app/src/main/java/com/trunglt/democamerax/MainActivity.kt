@@ -79,7 +79,7 @@ class MainActivity : AppCompatActivity() {
             )
             barcodeScanner.process(inputImage).addOnSuccessListener { barcodeList ->
                 barcodeList.getOrNull(0)?.let { barcode ->
-//                    cameraManager.stop()
+                    cameraManager.stop()
                     val sx = binding.drawingView.width.toFloat() / inputImage.height
                     val sy = binding.drawingView.height.toFloat() / inputImage.width
                     val scale = sx.coerceAtLeast(sy)
