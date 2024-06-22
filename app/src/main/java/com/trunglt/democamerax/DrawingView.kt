@@ -222,22 +222,22 @@ class DrawingView(context: Context, attrs: AttributeSet) : View(context, attrs) 
                 degree = it.animatedValue as Int
             }
         }
-        val qrBorderRadiusAnimation = if (isZoomOut) {
-            ValueAnimator.ofInt(0, qrBorderRadius)
-        } else {
-            ValueAnimator.ofInt(qrBorderRadius, 0)
-        }.apply {
-            addUpdateListener {
-                qrBorderRadiusAnimatedValue = it.animatedValue as Int
-            }
-        }
+//        val qrBorderRadiusAnimation = if (isZoomOut) {
+//            ValueAnimator.ofInt(0, qrBorderRadius)
+//        } else {
+//            ValueAnimator.ofInt(qrBorderRadius, 0)
+//        }.apply {
+//            addUpdateListener {
+//                qrBorderRadiusAnimatedValue = it.animatedValue as Int
+//            }
+//        }
         rectAnimation.playTogether(
             animateLeft,
             animateRight,
             animateTop,
             animateBottom,
             degreeAnimation,
-            qrBorderRadiusAnimation
+//            qrBorderRadiusAnimation
         )
         rectAnimation.setDuration(250).start()
     }
