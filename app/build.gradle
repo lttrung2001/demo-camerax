@@ -12,7 +12,7 @@ android {
 
   defaultConfig {
     applicationId "com.scan.barcodescanner"
-    minSdkVersion 21
+    minSdkVersion 24
     targetSdkVersion 33
     versionCode 1
     versionName "1.0"
@@ -33,6 +33,24 @@ android {
   kotlinOptions {
     jvmTarget = '1.8'
   }
+  repositories {
+    maven {
+      def githubProperties = new Properties()
+      githubProperties.load(new FileInputStream(rootProject.file("github.properties")))
+      name = "GitHubPackages"
+      /*  Configure path to the library hosted on GitHub Package Registry
+       *  Replace UserID with package owner userID and REPOSITORY with the repository name
+       *  e.g. "https://maven.pkg.github.com/enefce/AndroidLibraryForGitHubPackagesDemo"
+       */
+      url = uri("https://maven.pkg.github.com/${githubProperties['gpr.usr']}/demo-camerax")
+
+      credentials {
+        username = githubProperties['gpr.usr'] ?: System.getenv("GPR_USER")
+        password = githubProperties['gpr.key'] ?: System.getenv("GPR_API_KEY")
+      }
+    }
+  }
+
 }
 
 dependencies {
@@ -58,4 +76,5 @@ dependencies {
   implementation 'com.google.code.gson:gson:2.10.1'
   implementation 'com.google.mlkit:face-detection:16.1.6'
   implementation 'com.google.zxing:core:3.4.1'
+  implementation 'com.trunglt.qranimation:qranimation:1.0.0'
 }

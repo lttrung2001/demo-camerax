@@ -18,7 +18,7 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
 
-        <com.trunglt.democamerax.DrawingView
+        <vn.trunglt.qranimation.DrawingView
             android:id="@+id/drawing_view"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
