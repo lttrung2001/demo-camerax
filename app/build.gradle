@@ -46,7 +46,7 @@ android {
 
       credentials {
         username = githubProperties['gpr.usr'] ?: System.getenv("GPR_USER")
-        password = githubProperties['gpr.key'] ?: System.getenv("GPR_API_KEY")
+        password = githubProperties['gpr.pull_key'] ?: System.getenv("GPR_API_KEY")
       }
     }
   }
