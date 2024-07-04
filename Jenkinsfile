@@ -3,7 +3,8 @@ pipeline {
     stages {
         stage("Checkout") {
             steps {
-                git url: 'https://github.com/lttrung2001/demo-camerax.git'
+                git url: 'https://github.com/lttrung2001/demo-camerax.git',
+                branch: '${BRANCH}'
             }
         }
         stage("Get Commit Info") {
