@@ -3,8 +3,7 @@ pipeline {
     stages {
         stage("Checkout") {
             steps {
-                git url: 'https://github.com/lttrung2001/demo-camerax.git',
-                branch: 'feature/demo-qr-animation'
+                git url: 'https://github.com/lttrung2001/demo-camerax.git'
             }
         }
         stage("Build debug APK") {
