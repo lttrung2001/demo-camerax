@@ -4,7 +4,7 @@ pipeline {
         stage("Checkout") {
             steps {
                 git url: 'https://github.com/lttrung2001/demo-camerax.git',
-                branch: 'feature/demo-qr-animation'
+                branch: 'feature/demo-animation-qr'
             }
         }
         stage("Get Commit Info") {
