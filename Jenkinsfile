@@ -1,13 +1,14 @@
 pipeline {
     agent any
-    options {
-        disableConcurrentBuilds(abortPrevious: true)
+    parameters {
+        gitParameter branchFilter: 'origin/(.*)', defaultValue: 'master', name: 'BRANCH', type: 'PT_BRANCH'
     }
     stages {
         stage("Checkout") {
             steps {
-                git url: 'https://github.com/lttrung2001/demo-camerax.git',
-                branch: '${BRANCH}'
+                git branch: "${params.BRANCH}", url: 'https://github.com/lttrung2001/demo-camerax.git'
+                // git url: 'https://github.com/lttrung2001/demo-camerax.git',
+                // branch: '${BRANCH}'
             }
         }
         stage("Get Commit Info") {
