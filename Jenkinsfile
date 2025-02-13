@@ -9,13 +9,13 @@ pipeline {
         }
         stage("Build debug APK") {
             steps {
-                sh "./gradlew assembleDebug"
+                bat "./gradlew assembleDebug"
             }
         }
         stage("Publish APK") {
               steps {
                   // sh "C:/Users/trunglt/AppData/Roaming/npm/firebase appdistribution:distribute ./app/build/outputs/apk/debug/app-debug.apk --app 1:100838938041:android:782097ca0ae7fc92f55268 --token '${FIREBASE_TOKEN}' --release-notes '${NOTE}' --debug"
-                   sh "firebase appdistribution:distribute ./app/build/outputs/apk/debug/app-debug.apk --app 1:100838938041:android:782097ca0ae7fc92f55268 --token '${FIREBASE_TOKEN}' --release-notes '${NOTE}' --debug"
+                   bat "firebase appdistribution:distribute ./app/build/outputs/apk/debug/app-debug.apk --app 1:100838938041:android:782097ca0ae7fc92f55268 --token '${FIREBASE_TOKEN}' --release-notes '${NOTE}' --debug"
               }
         }
     }
